@@ -27,7 +27,7 @@ export default function ProductCard({
       <div className="h-16 w-16 rounded-md bg-muted overflow-hidden flex-shrink-0">
         {product.imageUrl ? (
           <img
-            src={product.imageUrl}
+            src={product.imageUrl ? `/api/img?url=${encodeURIComponent(product.imageUrl)}` : ""}
             alt={product.title}
             className="h-full w-full object-cover"
           />
