@@ -9,6 +9,8 @@ export type CartItem = {
 };
 
 type CartState = {
+  open: boolean;
+  setOpen: (v: boolean) => void;
   items: Record<string, CartItem>;
   add: (item: Omit<CartItem, "qty">) => void;
   dec: (sourceUrl: string) => void;
@@ -18,6 +20,10 @@ type CartState = {
 
 export const useCartStore = create<CartState>((set, get) => ({
   items: {},
+  
+  open: false,
+  setOpen: (v) => set({ open: v }),
+
   add: (item) =>
     set((s) => {
       const existing = s.items[item.sourceUrl];

@@ -7,6 +7,10 @@ export type Product = {
   sourceUrl: string;
 };
 
+export type ProductDetail = Product & {
+  description: string | null;
+};
+
 export type ProductsResponse = {
   products: Product[];
   count: number; 
@@ -25,4 +29,10 @@ export async function fetchProducts(categoryUrl: string, page = 1) {
   if (!res.ok) throw new Error("Failed to load products");
 
   return (await res.json()) as ProductsResponse;
+}
+
+export async function fetchProductDetails(productUrl: string) {
+  const res = await fetch(`/api/product?url=${encodeURIComponent(productUrl)}`);
+  if (!res.ok) throw new Error("Failed to load product details");
+  return (await res.json()) as ProductDetail;
 }

@@ -40,7 +40,6 @@ function filterProducts(products: Product[], q: string) {
 export default function Home() {
   const [categoryUrl, setCategoryUrl] = useState(CATEGORIES[0].url);
   const [query, setQuery] = useState("");
-  const [cartOpen, setCartOpen] = useState(false);
 
   const [visiblePages, setVisiblePages] = useState(1);
 
@@ -197,8 +196,6 @@ export default function Home() {
         ) : null}
       </main>
 
-      <CartBar onOpen={() => setCartOpen(true)} />
-      <CartSheet open={cartOpen} onOpenChange={setCartOpen} />
     </div>
   );
 }
