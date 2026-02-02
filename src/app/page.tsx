@@ -1,16 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchProducts } from "@/lib/api";
 import type { Product } from "@/lib/api";
 import ProductCard from "@/components/ProductCard";
 import { HomeHeader } from "@/components/HomeHeader";
 import { CategoryChips, type Category } from "@/components/CategoryChips";
-import { CartBar } from "@/components/CartBar";
-import { CartSheet } from "@/components/CartSheet";
 import { useCartStore } from "@/lib/cart-store";
 import { Button } from "@/components/ui/button";
+import { useProductsStore } from "@/lib/products-store";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 const CATEGORIES: Category[] = [
   { label: "Anchoring", url: "https://nautichandler.com/en/100799-anchoring-docking" },
@@ -38,7 +39,12 @@ function filterProducts(products: Product[], q: string) {
 }
 
 export default function Home() {
-  const [categoryUrl, setCategoryUrl] = useState(CATEGORIES[0].url);
+  const router = useRouter();
+  const sp = useSearchParams();
+
+  const categoryFromUrl = sp.get("cat");
+
+  const [categoryUrl, setCategoryUrl] = useState(() => categoryFromUrl ?? CATEGORIES[0].url);
   const [query, setQuery] = useState("");
 
   const [visiblePages, setVisiblePages] = useState(1);
@@ -65,12 +71,24 @@ export default function Home() {
       if ((lastPage.products?.length ?? 0) < PAGE_SIZE) return undefined;
       return allPages.length + 1;
     },
-    staleTime: 1000 * 60,
+    staleTime: 1000 * 60 * 10, 
+    gcTime: 1000 * 60 * 60,
   });
+
+  const qc = useQueryClient();
 
   const onPickCategory = (url: string) => {
     setCategoryUrl(url);
     setVisiblePages(1);
+
+    const params = new URLSearchParams(sp.toString());
+    params.set("cat", url);
+    qc.prefetchInfiniteQuery({
+      queryKey: ["products", url],
+      queryFn: ({ pageParam = 1 }) => fetchProducts(url, pageParam),
+      initialPageParam: 1,
+    });
+    router.replace(`/?${params.toString()}`, { scroll: false });
   };
 
   const loadedPages = data?.pages ?? [];
@@ -109,6 +127,33 @@ export default function Home() {
     setVisiblePages(1);
   };
 
+  const setOldPrice = useProductsStore((s) => s.setOldPrice);
+
+  useEffect(() => {
+    if (categoryFromUrl && categoryFromUrl !== categoryUrl) {
+      setCategoryUrl(categoryFromUrl);
+      setVisiblePages(1);
+    }
+  }, [categoryFromUrl]);
+
+  useEffect(() => {
+    shownProducts.forEach((p) => {
+      if (p.oldPrice) setOldPrice(p.sourceUrl, p.oldPrice);
+    });
+  }, [shownProducts, setOldPrice]);
+
+  useEffect(() => {
+    const preload = CATEGORIES.slice(0, 3).map((c) => c.url);
+
+    preload.forEach((u) => {
+      qc.prefetchInfiniteQuery({
+        queryKey: ["products", u],
+        queryFn: ({ pageParam = 1 }) => fetchProducts(u, pageParam),
+        initialPageParam: 1,
+      });
+    });
+  }, [qc]);
+
   return (
     <div className="min-h-screen bg-background">
       <HomeHeader query={query} setQuery={setQuery} />
@@ -144,6 +189,7 @@ export default function Home() {
                 key={p.sourceUrl}
                 product={p}
                 onQuickAdd={() => add(p)}
+                backTo={`/?cat=${encodeURIComponent(categoryUrl)}`}
               />
             ))
           )}

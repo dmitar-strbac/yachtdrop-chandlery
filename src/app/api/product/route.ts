@@ -2,6 +2,24 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
+type CacheEntry = { exp: number; val: any };
+const CACHE_KEY = "__yachtdrop_product_cache__";
+
+function getStore(): Map<string, CacheEntry> {
+  const g = globalThis as any;
+  if (!g[CACHE_KEY]) g[CACHE_KEY] = new Map<string, CacheEntry>();
+  return g[CACHE_KEY];
+}
+function getCache(key: string) {
+  const hit = getStore().get(key);
+  if (!hit) return null;
+  if (Date.now() > hit.exp) return null;
+  return hit.val;
+}
+function setCache(key: string, val: any, ttlMs: number) {
+  getStore().set(key, { val, exp: Date.now() + ttlMs });
+}
+
 type ProductDetail = {
   title: string;
   description: string | null;
@@ -22,6 +40,7 @@ function stripHtml(html: string) {
     .replace(/<li>/gi, "• ")
     .replace(/<[^>]+>/g, "")
     .replace(/\n{3,}/g, "\n\n")
+    .replace(/&nbsp;/g, " ")
     .trim();
 }
 
@@ -35,8 +54,10 @@ function decodeEntities(s: string) {
     .replaceAll("&amp;", "&")
     .replaceAll("&quot;", '"')
     .replaceAll("&#039;", "'")
+    .replaceAll("&apos;", "'")
     .replaceAll("&lt;", "<")
-    .replaceAll("&gt;", ">");
+    .replaceAll("&gt;", ">")
+    .replaceAll("&nbsp;", " ");
 }
 
 function normalizeCurrency(s: string | null) {
@@ -134,6 +155,91 @@ function parseJsonLdProduct(html: string): Partial<ProductDetail> {
   return {};
 }
 
+function extractByItempropDescription(html: string): string | null {
+  const m =
+    html.match(/<([a-z0-9]+)\b[^>]*\bitemprop=["']description["'][^>]*>([\s\S]*?)<\/\1>/i);
+  return m?.[2] ?? null;
+}
+
+function extractElementInnerHtmlById(html: string, id: string): string | null {
+  const startRe = new RegExp(
+    `<([a-z0-9]+)\\b[^>]*\\bid=["']${id}["'][^>]*>`,
+    "i"
+  );
+  const m = startRe.exec(html);
+  if (!m || m.index == null) return null;
+
+  const tag = m[1].toLowerCase();
+  const startTagEnd = m.index + m[0].length;
+
+  const tokenRe = new RegExp(`<\\/?${tag}\\b[^>]*>`, "gi");
+  tokenRe.lastIndex = startTagEnd;
+
+  let depth = 1;
+  let t: RegExpExecArray | null;
+
+  while ((t = tokenRe.exec(html))) {
+    const tok = t[0];
+    const isClose = tok.startsWith("</");
+    depth += isClose ? -1 : 1;
+
+    if (depth === 0) {
+      return html.slice(startTagEnd, t.index);
+    }
+  }
+  return null;
+}
+
+function extractDescription(html: string, ld: Partial<ProductDetail>): string | null {
+  const collapseDesc = extractElementInnerHtmlById(html, "collapseDescription");
+  if (collapseDesc) {
+    const cleaned = stripHtml(collapseDesc).trim();
+    if (cleaned && cleaned.length > 20) {
+      return cleaned;
+    }
+  }
+
+  const itempropDesc = extractByItempropDescription(html);
+  if (itempropDesc) {
+    const cleaned = stripHtml(itempropDesc).trim();
+    if (cleaned && cleaned.length > 20) {
+      return cleaned;
+    }
+  }
+
+  const descById = extractElementInnerHtmlById(html, "description");
+  if (descById) {
+    const cleaned = stripHtml(descById).trim();
+    if (cleaned && cleaned.length > 20) {
+      return cleaned;
+    }
+  }
+
+  const productDesc = extractElementInnerHtmlById(html, "product-description");
+  if (productDesc) {
+    const cleaned = stripHtml(productDesc).trim();
+    if (cleaned && cleaned.length > 20) {
+      return cleaned;
+    }
+  }
+
+  // 5. JSON-LD description
+  if (typeof ld.description === "string" && ld.description.trim()) {
+    return ld.description.trim();
+  }
+
+  // 6. Meta description kao fallback
+  const metaDesc =
+    firstMatch(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["'][^>]*>/i, html) ||
+    firstMatch(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["'][^>]*>/i, html);
+  
+  if (metaDesc && metaDesc.trim()) {
+    return metaDesc.trim();
+  }
+
+  return null;
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const url = searchParams.get("url");
@@ -141,6 +247,10 @@ export async function GET(req: Request) {
   if (!url) return NextResponse.json({ error: "Missing url" }, { status: 400 });
   if (!url.includes("nautichandler.com/"))
     return NextResponse.json({ error: "Invalid domain" }, { status: 400 });
+
+  const cacheKey = `product:${url}`;
+  const cached = getCache(cacheKey);
+  if (cached) return NextResponse.json({ ...cached, _cache: "HIT" });
 
   const res = await fetch(url, {
     headers: {
@@ -164,19 +274,7 @@ export async function GET(req: Request) {
 
   const ld = parseJsonLdProduct(html);
 
-  const metaDesc =
-    firstMatch(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["'][^>]*>/i, html) ||
-    firstMatch(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["'][^>]*>/i, html);
-
-  const descHtml =
-    firstMatch(/<div[^>]*id=["']description["'][^>]*>([\s\S]*?)<\/div>/i, html) ||
-    firstMatch(/<section[^>]*id=["']description["'][^>]*>([\s\S]*?)<\/section>/i, html) ||
-    null;
-
-  const description =
-    (typeof ld.description === "string" && ld.description.trim()) ||
-    (descHtml ? stripHtml(descHtml) : null) ||
-    (metaDesc ? metaDesc.trim() : null);
+  const description = extractDescription(html, ld);
 
   const title =
     (typeof ld.title === "string" && ld.title.trim()) ||
@@ -203,5 +301,6 @@ export async function GET(req: Request) {
     sourceUrl: url,
   };
 
-  return NextResponse.json(payload);
+  setCache(cacheKey, payload, 1000 * 60 * 10); 
+  return NextResponse.json({ ...payload, _cache: "MISS" });
 }

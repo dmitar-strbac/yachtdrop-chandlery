@@ -20,6 +20,7 @@ export default function ProductCard({
 }: {
   product: Product;
   onQuickAdd: () => void;
+  backTo?: string;
 }) {
   const label = stockLabel(product.stock);
 

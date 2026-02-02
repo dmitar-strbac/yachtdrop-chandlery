@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/cart-store";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
+import { useProductsStore } from "@/lib/products-store";
 
 function parseDiscountPercent(price: string | null, oldPrice: string | null) {
   if (!price || !oldPrice) return null;
@@ -27,9 +28,19 @@ function parseDiscountPercent(price: string | null, oldPrice: string | null) {
 export default function ProductPage() {
   const sp = useSearchParams();
   const router = useRouter();
+
   const url = sp.get("url") ?? "";
+  const back = sp.get("back");
 
   const add = useCartStore((s) => s.add);
+
+  const oldPriceByUrl = useProductsStore((s) => s.oldPriceByUrl);
+  const fallbackOldPrice = url ? oldPriceByUrl[url] : null;
+
+  const handleBack = () => {
+    if (back) router.push(decodeURIComponent(back));
+    else router.back();
+  };
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["product", url],
@@ -45,7 +56,7 @@ export default function ProductPage() {
         <Button
           className="mt-4 rounded-2xl"
           variant="secondary"
-          onClick={() => router.back()}
+          onClick={handleBack}
         >
           Go back
         </Button>
@@ -62,7 +73,7 @@ export default function ProductPage() {
               type="button"
               variant="ghost"
               size="icon"
-              onClick={() => router.back()}
+              onClick={handleBack}
               className="absolute left-0 rounded-full h-10 w-10 bg-muted/40 hover:bg-muted"
               aria-label="Go back"
             >
@@ -87,74 +98,81 @@ export default function ProductPage() {
         ) : error || !data ? (
           <div className="mt-4 text-sm text-destructive">Failed to load product.</div>
         ) : (
-          <div className="mt-4 rounded-3xl border overflow-hidden bg-card">
-            <div className="h-64 bg-muted">
-              {data.imageUrl ? (
-                <img
-                  src={`/api/img?url=${encodeURIComponent(data.imageUrl)}`}
-                  alt={data.title}
-                  className="h-full w-full object-contain bg-white"
-                />
-              ) : null}
-            </div>
+          (() => {
+            const effectiveOldPrice = data.oldPrice ?? fallbackOldPrice ?? null;
+            const discount = parseDiscountPercent(data.price, effectiveOldPrice);
 
-            <div className="p-4">
-              <div className="text-xl font-extrabold tracking-tight">
-                {data.title}
-              </div>
-
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="text-lg font-semibold">
-                      {data.price ?? "—"}
-                    </div>
-
-                    {data.oldPrice ? (
-                      <div className="text-sm text-muted-foreground line-through">
-                        {data.oldPrice}
-                      </div>
-                    ) : null}
-
-                    {parseDiscountPercent(data.price, data.oldPrice) ? (
-                      <Badge variant="secondary" className="rounded-full">
-                        -{parseDiscountPercent(data.price, data.oldPrice)}%
-                      </Badge>
-                    ) : null}
-                  </div>
-
-                  {data.stock ? (
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {data.stock}
-                    </div>
+            return (
+              <div className="mt-4 rounded-3xl border overflow-hidden bg-card">
+                <div className="h-64 bg-muted">
+                  {data.imageUrl ? (
+                    <img
+                      src={`/api/img?url=${encodeURIComponent(data.imageUrl)}`}
+                      alt={data.title}
+                      className="h-full w-full object-contain bg-white"
+                    />
                   ) : null}
                 </div>
 
-                <Button
-                  className="rounded-2xl bg-black text-white font-semibold shrink-0"
-                  onClick={() =>
-                    add({
-                      sourceUrl: data.sourceUrl,
-                      title: data.title,
-                      price: data.price,
-                      imageUrl: data.imageUrl,
-                    })
-                  }
-                >
-                  + Add
-                </Button>
-              </div>
+                <div className="p-4">
+                  <div className="text-xl font-extrabold tracking-tight">
+                    {data.title}
+                  </div>
 
-              <div className="mt-5">
-                <div className="text-sm font-semibold tracking-tight">
-                  Description
-                </div>
-                <div className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">
-                  {data.description ?? "No description found."}
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="text-lg font-semibold">
+                          {data.price ?? "—"}
+                        </div>
+
+                        {effectiveOldPrice ? (
+                          <div className="text-sm text-muted-foreground line-through">
+                            {effectiveOldPrice}
+                          </div>
+                        ) : null}
+
+                        {discount ? (
+                          <Badge variant="secondary" className="rounded-full">
+                            -{discount}%
+                          </Badge>
+                        ) : null}
+                      </div>
+
+                      {data.stock ? (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {data.stock}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <Button
+                      className="rounded-2xl bg-black text-white font-semibold shrink-0"
+                      onClick={() =>
+                        add({
+                          sourceUrl: data.sourceUrl,
+                          title: data.title,
+                          price: data.price,
+                          imageUrl: data.imageUrl,
+                        })
+                      }
+                    >
+                      + Add
+                    </Button>
+                  </div>
+
+                  <div className="mt-5">
+                    <div className="text-sm font-semibold tracking-tight">
+                      Description
+                    </div>
+                    <div className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">
+                      {data.description ?? "No description found."}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            );
+          })()
         )}
 
         <div className="h-6" />
