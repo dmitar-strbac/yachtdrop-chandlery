@@ -24,8 +24,8 @@ export function CategoryChips({
             size="sm"
             onClick={() => onPick(c.url)}
             className={clsx(
-              "rounded-full shrink-0",
-              activeUrl === c.url ? "" : "bg-muted"
+              "rounded-full shrink-0 px-4 font-semibold tracking-tight",
+              activeUrl === c.url ? "bg-black text-white shadow-sm" : "bg-muted text-foreground"
             )}
           >
             {c.label}

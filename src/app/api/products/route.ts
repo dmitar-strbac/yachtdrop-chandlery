@@ -2,11 +2,26 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
+function withPage(url: string, page: number) {
+  try {
+    const u = new URL(url);
+    u.searchParams.set("page", String(page));
+    return u.toString();
+  } catch {
+    return url; 
+  }
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const url =
-    searchParams.get("url") ||
-    "https://nautichandler.com/en/100390-painting";
+
+  const rawUrl =
+    searchParams.get("url") || "https://nautichandler.com/en/100390-painting";
+
+  const pageParam = searchParams.get("page");
+  const page = Math.max(1, Number(pageParam ?? "1") || 1);
+
+  const url = withPage(rawUrl, page);
 
   const worker = process.env.SCRAPER_WORKER_URL;
   if (!worker) {
@@ -29,5 +44,6 @@ export async function GET(req: Request) {
     );
   }
 
-  return NextResponse.json(await res.json());
+  const json = await res.json();
+  return NextResponse.json({ ...json, page });
 }

@@ -23,8 +23,8 @@ export default function ProductCard({
   const label = stockLabel(product.stock);
 
   return (
-    <Card className="p-3 flex gap-3">
-      <div className="h-16 w-16 rounded-md bg-muted overflow-hidden flex-shrink-0">
+    <Card className="p-4 flex gap-3 rounded-3xl border shadow-sm">
+      <div className="h-16 w-16 rounded-xl bg-muted overflow-hidden flex-shrink-0 border">
         {product.imageUrl ? (
           <img
             src={product.imageUrl ? `/api/img?url=${encodeURIComponent(product.imageUrl)}` : ""}
@@ -35,7 +35,7 @@ export default function ProductCard({
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="font-medium text-sm line-clamp-2">{product.title}</div>
+        <div className="font-semibold text-[15px] leading-snug line-clamp-2">{product.title}</div>
 
         <div className="mt-1 flex items-center gap-2">
           <div className="text-sm font-semibold">{product.price ?? "—"}</div>
@@ -48,7 +48,7 @@ export default function ProductCard({
 
         <div className="mt-2 flex items-center justify-between">
           {label ? <Badge variant="secondary">{label}</Badge> : <span />}
-          <Button size="sm" onClick={onQuickAdd}>
+          <Button size="sm" onClick={onQuickAdd} className="rounded-xl bg-black text-white font-semibold tracking-tight">
             + Add
           </Button>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { fetchProducts } from "@/lib/api";
 import type { Product } from "@/lib/api";
 import ProductCard from "@/components/ProductCard";
@@ -10,6 +10,7 @@ import { CategoryChips, type Category } from "@/components/CategoryChips";
 import { CartBar } from "@/components/CartBar";
 import { CartSheet } from "@/components/CartSheet";
 import { useCartStore } from "@/lib/cart-store";
+import { Button } from "@/components/ui/button";
 
 const CATEGORIES: Category[] = [
   { label: "Anchoring", url: "https://nautichandler.com/en/100799-anchoring-docking" },
@@ -41,29 +42,90 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
 
+  const [visiblePages, setVisiblePages] = useState(1);
+
   const add = useCartStore((s) => s.add);
 
-  const { data, isLoading, isFetching } = useQuery({
+  const PAGE_SIZE = 24;
+
+  const {
+    data,
+    isLoading,
+    isFetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ["products", categoryUrl],
-    queryFn: () => fetchProducts(categoryUrl),
+    queryFn: ({ pageParam = 1 }) => fetchProducts(categoryUrl, pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      if (typeof lastPage.hasNext === "boolean") {
+        return lastPage.hasNext ? allPages.length + 1 : undefined;
+      }
+      if ((lastPage.products?.length ?? 0) < PAGE_SIZE) return undefined;
+      return allPages.length + 1;
+    },
     staleTime: 1000 * 60,
   });
 
-  const products = useMemo(() => {
-    return filterProducts(data?.products ?? [], query);
-  }, [data?.products, query]);
+  const onPickCategory = (url: string) => {
+    setCategoryUrl(url);
+    setVisiblePages(1);
+  };
+
+  const loadedPages = data?.pages ?? [];
+  const loadedPagesCount = loadedPages.length;
+
+  const shownProducts = useMemo(() => {
+    const pagesToShow = loadedPages.slice(0, Math.max(1, visiblePages));
+    const flat = pagesToShow.flatMap((p) => p.products);
+    return filterProducts(flat, query);
+  }, [loadedPages, visiblePages, query]);
+
+  const searching = query.trim().length > 0;
+
+  const canLoadLess = visiblePages > 1;
+  const canLoadMore = !searching && (hasNextPage || visiblePages < loadedPagesCount);
+
+  const handleLoadMore = async () => {
+    if (searching) return;
+
+    if (visiblePages < loadedPagesCount) {
+      setVisiblePages((v) => v + 1);
+      return;
+    }
+
+    if (hasNextPage) {
+      await fetchNextPage();
+      setVisiblePages((v) => v + 1);
+    }
+  };
+
+  const handleLoadLess = () => {
+    setVisiblePages((v) => Math.max(1, v - 1));
+  };
+
+  const handleCollapseToFirst = () => {
+    setVisiblePages(1);
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <HomeHeader query={query} setQuery={setQuery} />
 
-      <CategoryChips categories={CATEGORIES} activeUrl={categoryUrl} onPick={setCategoryUrl} />
+      <CategoryChips
+        categories={CATEGORIES}
+        activeUrl={categoryUrl}
+        onPick={onPickCategory}
+      />
 
       <main className="mx-auto max-w-md px-4 pb-28 pt-2">
         <div className="flex items-center justify-between">
           <div className="text-sm font-medium">
-            {isLoading ? "Loading…" : `${products.length} items`}
+            {isLoading ? "Loading…" : `${shownProducts.length} items`}
           </div>
+
           {isFetching && !isLoading ? (
             <div className="text-xs text-muted-foreground">Refreshing…</div>
           ) : null}
@@ -72,14 +134,67 @@ export default function Home() {
         <div className="mt-3 grid grid-cols-1 gap-3">
           {isLoading ? (
             Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-28 rounded-2xl border bg-muted/40 animate-pulse" />
+              <div
+                key={i}
+                className="h-28 rounded-2xl border bg-muted/40 animate-pulse"
+              />
             ))
           ) : (
-            products.map((p) => (
-              <ProductCard key={p.sourceUrl} product={p} onQuickAdd={() => add(p)} />
+            shownProducts.map((p) => (
+              <ProductCard
+                key={p.sourceUrl}
+                product={p}
+                onQuickAdd={() => add(p)}
+              />
             ))
           )}
         </div>
+
+        {!isLoading ? (
+          <div className="mt-4 flex gap-2">
+            <Button
+              className="flex-1 rounded-2xl"
+              variant="secondary"
+              onClick={handleLoadLess}
+              disabled={!canLoadLess}
+            >
+              Load less
+            </Button>
+
+            <Button
+              className="flex-1 rounded-2xl"
+              variant="secondary"
+              onClick={handleLoadMore}
+              disabled={isFetchingNextPage || !canLoadMore}
+            >
+              {isFetchingNextPage ? "Loading…" : "Load more"}
+            </Button>
+          </div>
+        ) : null}
+
+        {!isLoading && canLoadLess ? (
+          <div className="mt-2">
+            <Button
+              className="w-full rounded-2xl"
+              variant="ghost"
+              onClick={handleCollapseToFirst}
+            >
+              Collapse to first page
+            </Button>
+          </div>
+        ) : null}
+
+        {searching ? (
+          <div className="text-center text-xs text-muted-foreground py-3">
+            Search is filtering loaded items (Load more is paused).
+          </div>
+        ) : null}
+
+        {!isLoading && !hasNextPage && visiblePages >= loadedPagesCount ? (
+          <div className="text-center text-xs text-muted-foreground py-3">
+            You’ve reached the end.
+          </div>
+        ) : null}
       </main>
 
       <CartBar onOpen={() => setCartOpen(true)} />

@@ -13,8 +13,8 @@ export function CartBar({ onOpen }: { onOpen: () => void }) {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40">
       <div className="mx-auto max-w-md px-4 pb-4">
-        <div className="rounded-2xl border bg-background/95 backdrop-blur shadow-lg">
-          <div className="flex items-center justify-between p-3">
+        <div className="rounded-3xl border bg-background/95 backdrop-blur shadow-lg">
+          <div className="flex items-center justify-between p-4">
             <div className="text-sm">
               <div className="font-semibold">
                 {total} item{total === 1 ? "" : "s"} in cart
@@ -23,7 +23,7 @@ export function CartBar({ onOpen }: { onOpen: () => void }) {
                 Tap to review & checkout
               </div>
             </div>
-            <Button onClick={onOpen} className="rounded-xl">
+            <Button onClick={onOpen} className="rounded-2xl bg-accent text-accent-foreground font-semibold tracking-tight">
               View cart
             </Button>
           </div>

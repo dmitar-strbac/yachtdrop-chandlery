@@ -7,8 +7,22 @@ export type Product = {
   sourceUrl: string;
 };
 
-export async function fetchProducts(categoryUrl: string) {
-  const res = await fetch(`/api/products?url=${encodeURIComponent(categoryUrl)}`);
+export type ProductsResponse = {
+  products: Product[];
+  count: number; 
+  source: string;
+  page?: number;
+  hasNext?: boolean; 
+};
+
+export async function fetchProducts(categoryUrl: string, page = 1) {
+  const qs = new URLSearchParams({
+    url: categoryUrl,
+    page: String(page),
+  });
+
+  const res = await fetch(`/api/products?${qs.toString()}`);
   if (!res.ok) throw new Error("Failed to load products");
-  return (await res.json()) as { products: Product[]; count: number; source: string };
+
+  return (await res.json()) as ProductsResponse;
 }
