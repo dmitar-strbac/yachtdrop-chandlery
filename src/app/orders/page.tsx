@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
+import { getSavedLocale, t, type Locale } from "@/lib/i18n";
 
 type StoredOrder = {
   id: string;
@@ -15,24 +16,43 @@ type StoredOrder = {
   status: "requested" | "processing" | "ready" | "completed" | "cancelled";
 };
 
-function formatEUR(n: number) {
-  return new Intl.NumberFormat("en-IE", {
+function formatEUR(n: number, locale: Locale) {
+  return new Intl.NumberFormat(locale === "es" ? "es-ES" : "en-IE", {
     style: "currency",
     currency: "EUR",
     maximumFractionDigits: 2,
   }).format(n);
 }
 
-const STEPS: Array<{ key: StoredOrder["status"]; label: string }> = [
-  { key: "requested", label: "Requested" },
-  { key: "processing", label: "Processing" },
-  { key: "ready", label: "Ready" },
-  { key: "completed", label: "Completed" },
+const STEPS: Array<{ key: StoredOrder["status"]; labelKey: string }> = [
+  { key: "requested", labelKey: "ordersStepRequested" },
+  { key: "processing", labelKey: "ordersStepProcessing" },
+  { key: "ready", labelKey: "ordersStepReady" },
+  { key: "completed", labelKey: "ordersStepCompleted" },
 ];
 
 const ORDERS_KEY = "yachtdrop:orders";
 
+function statusLabel(locale: Locale, s: StoredOrder["status"]) {
+  switch (s) {
+    case "requested":
+      return t(locale, "ordersStatusRequested");
+    case "processing":
+      return t(locale, "ordersStatusProcessing");
+    case "ready":
+      return t(locale, "ordersStatusReady");
+    case "completed":
+      return t(locale, "ordersStatusCompleted");
+    case "cancelled":
+      return t(locale, "ordersStatusCancelled");
+    default:
+      return s;
+  }
+}
+
 export default function OrdersPage() {
+  const locale = getSavedLocale("en");
+
   const [orders, setOrders] = useState<StoredOrder[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -42,7 +62,7 @@ export default function OrdersPage() {
       const parsed = raw ? JSON.parse(raw) : [];
       const list: StoredOrder[] = Array.isArray(parsed) ? parsed : [];
       setOrders(list);
-      setSelectedId(list[0]?.id ?? null); 
+      setSelectedId(list[0]?.id ?? null);
     } catch {
       setOrders([]);
       setSelectedId(null);
@@ -67,11 +87,11 @@ export default function OrdersPage() {
   const cancelSelected = () => {
     if (!selected) return;
 
-  const next = orders.map((o) =>
+    const next = orders.map((o) =>
       o.id === selected.id ? { ...o, status: "cancelled" as const } : o
-  );
+    );
 
-  setOrders(next);
+    setOrders(next);
     try {
       localStorage.setItem(ORDERS_KEY, JSON.stringify(next));
     } catch {}
@@ -83,9 +103,11 @@ export default function OrdersPage() {
       <header className="mx-auto max-w-md px-4 pt-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-2xl font-extrabold tracking-tight">Orders</div>
+            <div className="text-2xl font-extrabold tracking-tight">
+              {t(locale, "ordersTitle")}
+            </div>
             <div className="text-sm text-muted-foreground mt-1">
-              Track your orders
+              {t(locale, "ordersSubtitle")}
             </div>
           </div>
         </div>
@@ -94,14 +116,14 @@ export default function OrdersPage() {
       <main className="mx-auto max-w-md px-4 pb-44 pt-5">
         {orders.length === 0 ? (
           <div className="rounded-3xl border bg-muted/20 p-5">
-            <div className="font-semibold">No orders yet</div>
+            <div className="font-semibold">{t(locale, "ordersEmptyTitle")}</div>
             <div className="text-sm text-muted-foreground mt-1">
-              Complete checkout to see the status here.
+              {t(locale, "ordersEmptyBody")}
             </div>
 
             <div className="mt-4">
               <Button asChild className="rounded-2xl bg-black text-white font-semibold">
-                <Link href="/">Go to Home</Link>
+                <Link href="/">{t(locale, "ordersGoHome")}</Link>
               </Button>
             </div>
           </div>
@@ -121,28 +143,42 @@ export default function OrdersPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-xs text-muted-foreground">Order</div>
+                        <div className="text-xs text-muted-foreground">
+                          {t(locale, "ordersOrderLabel")}
+                        </div>
                         <div className="font-extrabold tracking-tight">
                           #{o.id.slice(0, 8).toUpperCase()}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          {new Date(o.createdAt).toLocaleString()}
+                          {new Date(o.createdAt).toLocaleString(
+                            locale === "es" ? "es-ES" : undefined
+                          )}
                         </div>
                       </div>
 
                       <div className="text-right">
-                        <div className="text-xs text-muted-foreground">Total</div>
-                        <div className="font-extrabold">{formatEUR(o.totalEUR)}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {t(locale, "ordersTotalLabel")}
+                        </div>
+                        <div className="font-extrabold">
+                          {formatEUR(o.totalEUR, locale)}
+                        </div>
                         <div className="mt-1 text-xs font-semibold">
-                          {o.fulfillment === "delivery" ? "Delivery" : "Pickup"}
+                          {o.fulfillment === "delivery"
+                            ? t(locale, "delivery")
+                            : t(locale, "pickup")}
                         </div>
                       </div>
                     </div>
 
                     <div className="mt-3 text-xs text-muted-foreground">
-                      Status: <span className="font-semibold text-foreground">{o.status}</span>
+                      {t(locale, "ordersStatusPrefix")}{" "}
+                      <span className="font-semibold text-foreground">
+                        {statusLabel(locale, o.status)}
+                      </span>
                       <span className="mx-2">•</span>
-                      Items: <span className="font-semibold text-foreground">{o.items.length}</span>
+                      {t(locale, "ordersItemsPrefix")}{" "}
+                      <span className="font-semibold text-foreground">{o.items.length}</span>
                     </div>
                   </button>
                 );
@@ -152,12 +188,12 @@ export default function OrdersPage() {
             {selected ? (
               <div className="mt-4 rounded-3xl border bg-background p-5 shadow-sm">
                 <div className="text-sm font-semibold">
-                  Selected: #{selected.id.slice(0, 8).toUpperCase()}
+                  {t(locale, "ordersSelectedPrefix")} #{selected.id.slice(0, 8).toUpperCase()}
                 </div>
 
                 <div className="mt-3 flex gap-2">
                   <Button asChild variant="secondary" className="rounded-2xl flex-1">
-                    <Link href="/">Back to shopping</Link>
+                    <Link href="/">{t(locale, "ordersBackToShopping")}</Link>
                   </Button>
 
                   <Button
@@ -166,26 +202,28 @@ export default function OrdersPage() {
                     disabled={!canCancelSelected}
                     onClick={() => setConfirmCancelOpen(true)}
                   >
-                    Cancel order
+                    {t(locale, "ordersCancel")}
                   </Button>
                 </div>
 
                 {!canCancelSelected && selected?.status !== "cancelled" ? (
                   <div className="mt-2 text-xs text-muted-foreground">
-                    Cancellation is only available before the order is ready.
+                    {t(locale, "ordersCancelHint")}
                   </div>
                 ) : null}
 
                 <div className="mt-4">
                   <div className="text-xs font-semibold text-muted-foreground mb-2">
-                    Status
+                    {t(locale, "ordersStatusHeader")}
                   </div>
 
                   {selected.status === "cancelled" ? (
                     <div className="rounded-2xl border bg-muted/20 px-4 py-3">
-                      <div className="text-sm font-extrabold">Cancelled</div>
+                      <div className="text-sm font-extrabold">
+                        {t(locale, "ordersCancelledTitle")}
+                      </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        This order was cancelled and will not be fulfilled.
+                        {t(locale, "ordersCancelledBody")}
                       </div>
                     </div>
                   ) : (
@@ -206,7 +244,7 @@ export default function OrdersPage() {
                                 done ? "text-foreground" : "text-muted-foreground"
                               )}
                             >
-                              {s.label}
+                              {t(locale, s.labelKey as any)}
                             </div>
                           </div>
                         );
@@ -214,9 +252,10 @@ export default function OrdersPage() {
                     </div>
                   )}
                 </div>
+
                 <div className="mt-5 border-t pt-4">
                   <div className="text-xs font-semibold text-muted-foreground mb-2">
-                    Items
+                    {t(locale, "items")}
                   </div>
 
                   <div className="space-y-2">
@@ -241,9 +280,11 @@ export default function OrdersPage() {
         {confirmCancelOpen ? (
           <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 px-4 pb-24">
             <div className="w-full max-w-md rounded-3xl bg-background p-5 shadow-xl">
-              <div className="text-lg font-extrabold">Cancel this order?</div>
+              <div className="text-lg font-extrabold">
+                {t(locale, "ordersCancelConfirmTitle")}
+              </div>
               <div className="mt-1 text-sm text-muted-foreground">
-                Are you sure you want to cancel this order? This action can’t be undone.
+                {t(locale, "ordersCancelConfirmBody")}
               </div>
 
               <div className="mt-4 flex gap-2">
@@ -252,7 +293,7 @@ export default function OrdersPage() {
                   className="flex-1 rounded-2xl"
                   onClick={() => setConfirmCancelOpen(false)}
                 >
-                  Keep order
+                  {t(locale, "ordersKeep")}
                 </Button>
 
                 <Button
@@ -260,7 +301,7 @@ export default function OrdersPage() {
                   variant="destructive"
                   onClick={cancelSelected}
                 >
-                  Yes, cancel
+                  {t(locale, "ordersYesCancel")}
                 </Button>
               </div>
             </div>

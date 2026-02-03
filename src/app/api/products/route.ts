@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-// --- simple in-memory cache (hackathon-ready) ---
 type CacheEntry = { exp: number; val: any };
 const CACHE_KEY = "__yachtdrop_products_cache__";
 
@@ -42,11 +41,9 @@ export async function GET(req: Request) {
 
   const url = withPage(rawUrl, page);
 
-  // cache key includes url+page
   const cacheKey = `products:${url}`;
   const cached = getCache(cacheKey);
   if (cached) {
-    // add a small hint header for debugging (optional)
     return NextResponse.json({ ...cached, page, _cache: "HIT" });
   }
 
@@ -72,7 +69,6 @@ export async function GET(req: Request) {
 
   const json = await res.json();
 
-  // 5 min TTL (može 2 min ako želiš sveže)
   setCache(cacheKey, json, 1000 * 60 * 5);
 
   return NextResponse.json({ ...json, page, _cache: "MISS" });

@@ -223,12 +223,10 @@ function extractDescription(html: string, ld: Partial<ProductDetail>): string | 
     }
   }
 
-  // 5. JSON-LD description
   if (typeof ld.description === "string" && ld.description.trim()) {
     return ld.description.trim();
   }
 
-  // 6. Meta description kao fallback
   const metaDesc =
     firstMatch(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["'][^>]*>/i, html) ||
     firstMatch(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["'][^>]*>/i, html);

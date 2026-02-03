@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
+import { getSavedLocale, t } from "@/lib/i18n";
 
 export type DockProfile = {
   marina: string;
@@ -13,12 +14,15 @@ export type DockProfile = {
 const DOCK_KEY = "yachtdrop:dockProfile";
 
 const MARINAS = [
-  "Porto Montenegro",
-  "Marina di Porto Cervo",
-  "Marina Ibiza",
+  "Port d’Andratx (Mallorca)",
+  "Port de Palma (Mallorca)",
+  "Port Adriano (Mallorca)",
+  "Puerto Portals (Mallorca)",
+  "Santa Eulalia Marina (Ibiza)",
+  "Port de Sóller (Mallorca)",
+  "Marina Mahón (Menorca)",
+  "Port Vauban (Antibes)",
   "Port Hercule (Monaco)",
-  "ACI Marina Split",
-  "D-Marin Mandalina",
 ];
 
 function getInitialDepartureISO() {
@@ -56,6 +60,7 @@ export default function DockSheet({
   const [marina, setMarina] = useState(MARINAS[0]);
   const [berth, setBerth] = useState("A12");
   const [departureISO, setDepartureISO] = useState(getInitialDepartureISO());
+  const locale = getSavedLocale("en");
 
   useEffect(() => {
     if (!open) return;
@@ -102,10 +107,10 @@ export default function DockSheet({
     tomorrow18.setHours(18, 0, 0, 0);
 
     return [
-        { label: "In 4h", iso: toLocalInputValue(in4h) },
-        { label: "Today 18:00", iso: toLocalInputValue(today18) },
-        { label: "Tomorrow 08:00", iso: toLocalInputValue(tomorrow8) },
-        { label: "Tomorrow 18:00", iso: toLocalInputValue(tomorrow18) },
+        { label: t(locale, "in4h"), iso: toLocalInputValue(in4h) },
+        { label: t(locale, "today1800"), iso: toLocalInputValue(today18) },
+        { label: t(locale, "tomorrow0800"), iso: toLocalInputValue(tomorrow8) },
+        { label: t(locale, "tomorrow1800"), iso: toLocalInputValue(tomorrow18) },
     ];
   }, []);
 
@@ -129,14 +134,14 @@ export default function DockSheet({
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 px-4 pb-[calc(env(safe-area-inset-bottom)+70px)]">
       <div className="w-full max-w-md rounded-3xl bg-background p-5 shadow-xl max-h-[75vh] overflow-y-auto">
-        <div className="text-xl font-extrabold tracking-tight">Where is your yacht right now?</div>
+        <div className="text-xl font-extrabold tracking-tight">{t(locale, "dockTitle")}</div>
         <div className="mt-1 text-sm text-muted-foreground">
-          Set marina, berth and departure.
+          {t(locale, "dockSubtitle")}
         </div>
 
         <div className="mt-4 space-y-3">
           <div>
-            <div className="text-xs font-semibold text-muted-foreground mb-1">Marina</div>
+            <div className="text-xs font-semibold text-muted-foreground mb-1">{t(locale, "marina")}</div>
             <select
               value={marina}
               onChange={(e) => setMarina(e.target.value)}
@@ -149,7 +154,7 @@ export default function DockSheet({
           </div>
 
           <div>
-            <div className="text-xs font-semibold text-muted-foreground mb-1">Berth</div>
+            <div className="text-xs font-semibold text-muted-foreground mb-1">{t(locale, "berth")}</div>
             <input
               value={berth}
               onChange={(e) => setBerth(e.target.value)}
@@ -159,7 +164,7 @@ export default function DockSheet({
           </div>
 
           <div>
-            <div className="text-xs font-semibold text-muted-foreground mb-1">Departure</div>
+            <div className="text-xs font-semibold text-muted-foreground mb-1">{t(locale, "departure")}</div>
             <input
               type="datetime-local"
               value={departureISO}
@@ -195,12 +200,12 @@ export default function DockSheet({
                     onClose();
                 }}
                 >
-                Remove yacht
+                {t(locale, "removeYacht")}
                 </Button>
             ) : null}
 
           <Button variant="secondary" className="flex-1 rounded-2xl" onClick={onClose}>
-            Not now
+            {t(locale, "notNow")}
           </Button>
           <Button
             className="flex-1 rounded-2xl bg-black text-white font-semibold"
@@ -212,7 +217,7 @@ export default function DockSheet({
               onClose();
             }}
           >
-            Confirm yacht
+            {t(locale, "confirmYacht")}
           </Button>
         </div>
       </div>

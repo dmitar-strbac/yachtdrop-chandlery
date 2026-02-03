@@ -14,25 +14,81 @@ import DockFab from "@/components/DockFab";
 import { useProductsStore } from "@/lib/products-store";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
+import { getSavedLocale, saveLocale, localeFromUrl, type Locale, t } from "@/lib/i18n";
 
-const CATEGORIES: Category[] = [
-  { label: "Anchoring", url: "https://nautichandler.com/en/100799-anchoring-docking" },
-  { label: "Clothing", url: "https://nautichandler.com/en/43-personal-equipment" },
-  { label: "Electrics", url: "https://nautichandler.com/en/100392-electricslighting" },
-  { label: "Electronics", url: "https://nautichandler.com/en/190-electronics" },
-  { label: "Fitting", url: "https://nautichandler.com/en/100396-fitting" },
-  { label: "Inflatables", url: "https://nautichandler.com/en/100911-inflatable-water-toys" },
-  { label: "Life on board", url: "https://nautichandler.com/en/197-life-on-board" },
-  { label: "Maintenance", url: "https://nautichandler.com/en/100669-maintenance-cleaning-products" },
-  { label: "Motor", url: "https://nautichandler.com/en/100393-motor" },
-  { label: "Navigation", url: "https://nautichandler.com/en/100329-navigation" },
-  { label: "Painting", url: "https://nautichandler.com/en/100390-painting" },
-  { label: "Plumbing", url: "https://nautichandler.com/en/100713-plumbing" },
-  { label: "Ropes", url: "https://nautichandler.com/en/100395-ropes" },
-  { label: "Safety", url: "https://nautichandler.com/en/100389-safety" },
-  { label: "Screws", url: "https://nautichandler.com/en/100394-screws" },
-  { label: "Tools", url: "https://nautichandler.com/en/100391-tools-machines" },
+function normalizeLocaleInUrl(url: string, locale: Locale) {
+  try {
+    const u = new URL(url);
+    if (!u.hostname.includes("nautichandler.com")) return url;
+
+    if (u.pathname.startsWith("/en/") || u.pathname.startsWith("/es/")) {
+      u.pathname = u.pathname.replace(/^\/(en|es)\//, `/${locale}/`);
+      return u.toString();
+    }
+
+    u.pathname = `/${locale}${u.pathname.startsWith("/") ? "" : "/"}${u.pathname}`;
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
+const CATEGORY_DEFS: Array<{
+  key:
+    | "anchoring"
+    | "clothing"
+    | "electrics"
+    | "electronics"
+    | "fitting"
+    | "inflatables"
+    | "lifeOnBoard"
+    | "maintenance"
+    | "motor"
+    | "navigation"
+    | "painting"
+    | "plumbing"
+    | "ropes"
+    | "safety"
+    | "screws"
+    | "tools";
+  path: Record<Locale, string>;
+}> = [
+  { key: "anchoring", path: { en: "/100799-anchoring-docking", es: "/100799-anclaje-acoplamiento" } },
+  { key: "clothing", path: { en: "/43-personal-equipment", es: "/43-equipamiento-personal" } },
+  { key: "electrics", path: { en: "/100392-electricslighting", es: "/100392-electricidad-iluminacion" } },
+  { key: "electronics", path: { en: "/190-electronics", es: "/190-electronica" } },
+  { key: "fitting", path: { en: "/100396-fitting", es: "/100396-ajuste" } },
+  { key: "inflatables", path: { en: "/100911-inflatable-water-toys", es: "/100911-juguetes-acuaticos-inflables" } },
+  { key: "lifeOnBoard", path: { en: "/197-life-on-board", es: "/197-vida-a-bordo" } },
+  { key: "maintenance", path: { en: "/100669-maintenance-cleaning-products", es: "/100669-productos-de-mantenimiento-limpieza" } },
+  { key: "motor", path: { en: "/100393-motor", es: "/100393-motor" } },
+  { key: "navigation", path: { en: "/100329-navigation", es: "/100329-navegacion" } },
+  { key: "painting", path: { en: "/100390-painting", es: "/100390-pintura" } },
+  { key: "plumbing", path: { en: "/100713-plumbing", es: "/100713-plomeria" } },
+  { key: "ropes", path: { en: "/100395-ropes", es: "/100395-cuerdas" } },
+  { key: "safety", path: { en: "/100389-safety", es: "/100389-seguridad" } },
+  { key: "screws", path: { en: "/100394-screws", es: "/100394-tornillos" } },
+  { key: "tools", path: { en: "/100391-tools-machines", es: "/100391-herramientas-maquinas" } },
 ];
+
+function buildCategories(locale: Locale): Category[] {
+  return CATEGORY_DEFS.map((c) => ({
+    label: t(locale, `category.${c.key}`),
+    url: `https://nautichandler.com/${locale}${c.path[locale]}`,
+  }));
+}
+
+function findCategoryByUrl(url: string) {
+  return CATEGORY_DEFS.find((c) => {
+    const en = `https://nautichandler.com/en${c.path.en}`;
+    const es = `https://nautichandler.com/es${c.path.es}`;
+    return url === en || url === es;
+  });
+}
+
+function categoryUrlFor(cat: (typeof CATEGORY_DEFS)[number], locale: Locale) {
+  return `https://nautichandler.com/${locale}${cat.path[locale]}`;
+}
 
 function filterProducts(products: Product[], q: string) {
   const query = q.trim().toLowerCase();
@@ -46,7 +102,18 @@ export default function Home() {
 
   const categoryFromUrl = sp.get("cat");
 
-  const [categoryUrl, setCategoryUrl] = useState(() => categoryFromUrl ?? CATEGORIES[0].url);
+  const [locale, setLocale] = useState<Locale>(() => {
+    if (categoryFromUrl) return localeFromUrl(categoryFromUrl);
+    return getSavedLocale("en");
+  });
+
+  const CATEGORIES: Category[] = useMemo(() => buildCategories(locale), [locale]);
+
+  const [categoryUrl, setCategoryUrl] = useState(() => {
+    const initial = categoryFromUrl ?? CATEGORIES[0].url;
+    return normalizeLocaleInUrl(initial, locale);
+  });
+
   const [query, setQuery] = useState("");
 
   const [visiblePages, setVisiblePages] = useState(1);
@@ -73,23 +140,26 @@ export default function Home() {
       if ((lastPage.products?.length ?? 0) < PAGE_SIZE) return undefined;
       return allPages.length + 1;
     },
-    staleTime: 1000 * 60 * 10, 
+    staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 60,
   });
 
   const qc = useQueryClient();
 
   const onPickCategory = (url: string) => {
+    // url iz chips-a je već sa trenutnim locale
     setCategoryUrl(url);
     setVisiblePages(1);
 
     const params = new URLSearchParams(sp.toString());
     params.set("cat", url);
+
     qc.prefetchInfiniteQuery({
       queryKey: ["products", url],
       queryFn: ({ pageParam = 1 }) => fetchProducts(url, pageParam),
       initialPageParam: 1,
     });
+
     router.replace(`/?${params.toString()}`, { scroll: false });
   };
 
@@ -137,7 +207,15 @@ export default function Home() {
   const [dockVersion, setDockVersion] = useState(0);
 
   useEffect(() => {
-    if (categoryFromUrl && categoryFromUrl !== categoryUrl) {
+    if (!categoryFromUrl) return;
+
+    const nextLocale = localeFromUrl(categoryFromUrl);
+    if (nextLocale !== locale) {
+      setLocale(nextLocale);
+      saveLocale(nextLocale);
+    }
+
+    if (categoryFromUrl !== categoryUrl) {
       setCategoryUrl(categoryFromUrl);
       setVisiblePages(1);
     }
@@ -159,7 +237,7 @@ export default function Home() {
         initialPageParam: 1,
       });
     });
-  }, [qc]);
+  }, [qc, CATEGORIES]);
 
   const [dockOpen, setDockOpen] = useState(false);
   const [dock, setDock] = useState<DockProfile | null>(null);
@@ -168,15 +246,34 @@ export default function Home() {
     setDock(loadDockProfile());
   }, []);
 
+  const handleSetLocale = (next: Locale) => {
+  if (next === locale) return;
+
+  const currentCat = findCategoryByUrl(categoryUrl);
+
+  const nextCategoryUrl = currentCat
+    ? categoryUrlFor(currentCat, next)
+    : `https://nautichandler.com/${next}${CATEGORY_DEFS[0].path[next]}`;
+
+  setLocale(next);
+  setCategoryUrl(nextCategoryUrl);
+  setVisiblePages(1);
+
+  const params = new URLSearchParams(sp.toString());
+  params.set("cat", nextCategoryUrl);
+  router.replace(`/?${params.toString()}`, { scroll: false });
+};
+
   return (
     <div className="min-h-screen bg-background">
-      <HomeHeader query={query} setQuery={setQuery} />
-
-      <CategoryChips
-        categories={CATEGORIES}
-        activeUrl={categoryUrl}
-        onPick={onPickCategory}
+      <HomeHeader
+        query={query}
+        setQuery={setQuery}
+        locale={locale}
+        setLocale={handleSetLocale}
       />
+
+      <CategoryChips categories={CATEGORIES} activeUrl={categoryUrl} onPick={onPickCategory} />
 
       <DockFab dock={dock} onOpen={() => setDockOpen(true)} />
 
@@ -192,7 +289,7 @@ export default function Home() {
       <main className="mx-auto max-w-md px-4 pb-44 pt-2">
         <div className="flex items-center justify-between">
           <div className="text-sm font-medium">
-            {!mounted ? "Loading…" : (isLoading ? "Loading…" : `${shownProducts.length} items`)}
+            {!mounted ? "Loading…" : isLoading ? "Loading…" : `${shownProducts.length} items`}
           </div>
 
           {isFetching && !isLoading ? (
@@ -203,10 +300,7 @@ export default function Home() {
         <div className="mt-3 grid grid-cols-1 gap-3">
           {isLoading ? (
             Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-28 rounded-2xl border bg-muted/40 animate-pulse"
-              />
+              <div key={i} className="h-28 rounded-2xl border bg-muted/40 animate-pulse" />
             ))
           ) : (
             shownProducts.map((p) => (
@@ -245,11 +339,7 @@ export default function Home() {
 
         {!isLoading && canLoadLess ? (
           <div className="mt-2">
-            <Button
-              className="w-full rounded-2xl"
-              variant="ghost"
-              onClick={handleCollapseToFirst}
-            >
+            <Button className="w-full rounded-2xl" variant="ghost" onClick={handleCollapseToFirst}>
               Collapse to first page
             </Button>
           </div>
@@ -262,12 +352,9 @@ export default function Home() {
         ) : null}
 
         {!isLoading && !hasNextPage && visiblePages >= loadedPagesCount ? (
-          <div className="text-center text-xs text-muted-foreground py-3">
-            You’ve reached the end.
-          </div>
+          <div className="text-center text-xs text-muted-foreground py-3">You’ve reached the end.</div>
         ) : null}
       </main>
-
     </div>
   );
 }

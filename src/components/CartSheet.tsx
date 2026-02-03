@@ -5,14 +5,18 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/cart-store";
 import { useEffect } from "react";
+import { getSavedLocale, t } from "@/lib/i18n";
 
 const LOCATIONS = [
-  "Porto Montenegro (Tivat)",
-  "Kotor Marina (Kotor)",
-  "Dukley Marina (Budva)",
-  "Budva Marina (Budva)",
-  "Bar Marina (Bar)",
-  "Herceg Novi Marina (Herceg Novi)",
+  "Port d'Andratx (Mallorca)",
+  "Port de Palma (Mallorca)",
+  "Port Adriano (Mallorca)",
+  "Puerto Portals (Mallorca)",
+  "Santa Eulalia Marina (Ibiza)",
+  "Port de Sóller (Mallorca)",
+  "Marina Mahón (Menorca)",
+  "Port Vauban (Antibes)",
+  "Port Hercule (Monaco)",
 ];
 
 function countItems(itemsMap: Record<string, any>) {
@@ -106,6 +110,8 @@ export function CartSheet({
 }) {
   const [step, setStep] = useState<"cart" | "checkout">("cart");
 
+  const locale = getSavedLocale("en");
+
   const itemsMap = useCartStore((s) => s.items);
   const dec = useCartStore((s) => s.dec);
   const add = useCartStore((s) => s.add);
@@ -193,19 +199,19 @@ export function CartSheet({
         <div className="px-5 pt-4">
           <SheetHeader>
             <SheetTitle className="text-xl font-extrabold tracking-tight">
-              {step === "cart" ? `Cart (${count})` : "Checkout"}
+              {step === "cart" ? `${t(locale, "cart")} (${count})` : t(locale, "checkout")}
             </SheetTitle>
           </SheetHeader>
         </div>
 
         <div className="px-5 pb-28 pt-4 overflow-y-auto max-h-[calc(85vh-120px)]">
           {!hasItems ? (
-            <div className="text-sm text-muted-foreground">Your cart is empty.</div>
+            <div className="text-sm text-muted-foreground">{t(locale, "cartEmpty")}</div>
           ) : step === "cart" ? (
             <>
               <div className="mb-4">
                 <div className="text-xs font-semibold text-muted-foreground mb-2">
-                  Delivery method
+                  {t(locale, "deliveryMethod")}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
@@ -217,7 +223,7 @@ export function CartSheet({
                     ].join(" ")}
                     onClick={() => setFulfillment("delivery")}
                   >
-                    Delivery
+                    {t(locale, "delivery")}
                   </Button>
                   <Button
                     type="button"
@@ -228,7 +234,7 @@ export function CartSheet({
                     ].join(" ")}
                     onClick={() => setFulfillment("pickup")}
                   >
-                    Pickup
+                    {t(locale, "pickup")}
                   </Button>
                 </div>
               </div>
@@ -238,14 +244,14 @@ export function CartSheet({
                   <>
                     <div className="grid gap-2">
                       <label className="text-xs font-semibold text-muted-foreground">
-                        Marina location *
+                        {t(locale, "marinaLocation")}
                       </label>
                       <select
                         className="h-11 rounded-2xl border bg-background px-3 text-sm outline-none"
                         value={details.marina}
                         onChange={(e) => updateDetails({ marina: e.target.value })}
                       >
-                        <option value="">Select marina location…</option>
+                        <option value="">{t(locale, "selectMarina")}</option>
                         {LOCATIONS.map((loc) => (
                           <option key={loc} value={loc}>
                             {loc}
@@ -256,7 +262,7 @@ export function CartSheet({
 
                     <div className="grid gap-2">
                       <label className="text-xs font-semibold text-muted-foreground">
-                        Boat name (optional)
+                        {t(locale, "boatNameOptional")}
                       </label>
                       <input
                         className="h-11 rounded-2xl border bg-background px-3 text-sm outline-none"
@@ -268,11 +274,11 @@ export function CartSheet({
 
                     <div className="grid gap-2">
                       <label className="text-xs font-semibold text-muted-foreground">
-                        Slip / Berth (optional)
+                        {t(locale, "slipOptional")}
                       </label>
                       <input
                         className="h-11 rounded-2xl border bg-background px-3 text-sm outline-none"
-                        placeholder="e.g. A12"
+                        placeholder={t(locale, "berthPlaceholder")}
                         value={details.slip}
                         onChange={(e) => updateDetails({ slip: e.target.value })}
                       />
@@ -282,14 +288,14 @@ export function CartSheet({
                   <>
                     <div className="grid gap-2">
                       <label className="text-xs font-semibold text-muted-foreground">
-                        Pickup location *
+                        {t(locale, "pickupLocation")}
                       </label>
                       <select
                         className="h-11 rounded-2xl border bg-background px-3 text-sm outline-none"
                         value={details.pickupLocation}
                         onChange={(e) => updateDetails({ pickupLocation: e.target.value })}
                       >
-                        <option value="">Select pickup location…</option>
+                        <option value="">{t(locale, "selectPickup")}</option>
                         {LOCATIONS.map((loc) => (
                           <option key={loc} value={loc}>
                             {loc}
@@ -301,7 +307,7 @@ export function CartSheet({
                     <div className="grid grid-cols-2 gap-2">
                       <div className="grid gap-2">
                         <label className="text-xs font-semibold text-muted-foreground">
-                          Date *
+                          {t(locale, "date")}
                         </label>
                         <input
                           type="date"
@@ -314,7 +320,7 @@ export function CartSheet({
 
                       <div className="grid gap-2">
                         <label className="text-xs font-semibold text-muted-foreground">
-                          Time *
+                          {t(locale, "time")}
                         </label>
                         <input
                           type="time"
@@ -328,7 +334,7 @@ export function CartSheet({
 
                     {!pickupOk && details.pickupDate && details.pickupDate < minDate ? (
                       <div className="text-xs text-destructive">
-                        Pickup date can’t be in the past.
+                        {t(locale, "pickupPast")}
                       </div>
                     ) : null}
                   </>
@@ -336,7 +342,7 @@ export function CartSheet({
 
                 <div className="grid gap-2">
                   <label className="text-xs font-semibold text-muted-foreground">
-                    Contact phone *
+                    {t(locale, "contactPhone")}
                   </label>
                   <input
                     className="h-11 rounded-2xl border bg-background px-3 text-sm outline-none"
@@ -346,18 +352,18 @@ export function CartSheet({
                   />
                   {!phoneOk && details.phone.length > 0 ? (
                     <div className="text-xs text-muted-foreground">
-                      Please enter a valid phone number.
+                      {t(locale, "phoneHint")}
                     </div>
                   ) : null}
                 </div>
 
                 <div className="grid gap-2">
                   <label className="text-xs font-semibold text-muted-foreground">
-                    Note (optional)
+                    {t(locale, "noteOptional")}
                   </label>
                   <textarea
                     className="min-h-[88px] rounded-2xl border bg-background px-3 py-2 text-sm outline-none resize-none"
-                    placeholder="Gate code, deliver to dock, call on arrival…"
+                    placeholder={t(locale, "notePlaceholder")}
                     value={details.note}
                     onChange={(e) => updateDetails({ note: e.target.value })}
                   />
@@ -412,7 +418,7 @@ export function CartSheet({
                           className="rounded-xl"
                           onClick={() => remove(it.sourceUrl)}
                         >
-                          Remove
+                          {t(locale, "remove")}
                         </Button>
                       </div>
                     </div>
@@ -423,9 +429,9 @@ export function CartSheet({
           ) : (
             <>
               <div className="rounded-2xl border p-4 space-y-3">
-                <div className="text-sm font-semibold">Delivery method</div>
+                <div className="text-sm font-semibold">{t(locale, "deliveryMethod")}</div>
                 <div className="text-sm text-muted-foreground">
-                  {fulfillment === "delivery" ? "Delivery to boat / marina" : "Pickup"}
+                  {fulfillment === "delivery" ? t(locale, "deliveryToBoat") : t(locale, "pickup")}
                 </div>
 
                 {(() => {
@@ -439,17 +445,17 @@ export function CartSheet({
 
                   return (
                     <div className="mt-2 rounded-2xl border bg-muted/20 p-3">
-                      <div className="text-sm font-semibold">ETA to boat</div>
+                      <div className="text-sm font-semibold">{t(locale, "etaToBoat")}</div>
                       <div className="text-sm text-muted-foreground">
-                        ~{min}–{max} hours (dock runners in marina)
+                        {t(locale, "etaRange", { min: String(min), max: String(max) })}
                       </div>
                       {mayBeLate ? (
                         <div className="mt-1 text-xs font-semibold text-orange-600">
-                          Heads up: delivery might arrive after your departure time.
+                          {t(locale, "headsUpLate")}
                         </div>
                       ) : (
                         <div className="mt-1 text-xs font-semibold text-emerald-700">
-                          Looks good before departure.
+                          {t(locale, "looksGood")}
                         </div>
                       )}
                     </div>
@@ -460,37 +466,39 @@ export function CartSheet({
                   <div className="text-sm">
                     <div className="font-semibold">{details.marina || "—"}</div>
                     <div className="text-muted-foreground">
-                      {details.boatName ? `Boat: ${details.boatName}` : null}
+                      {details.boatName ? t(locale, "boat", { name: details.boatName }) : null}
                       {details.boatName && details.slip ? " • " : null}
-                      {details.slip ? `Slip: ${details.slip}` : null}
+                      {details.slip ? t(locale, "slip", { slip: details.slip }) : null}
                     </div>
                   </div>
                 ) : (
                   <div className="text-sm">
                     <div className="font-semibold">{details.pickupLocation || "—"}</div>
                     <div className="text-muted-foreground">
+                      {/* ✅ Localized with variables */}
                       {details.pickupDate && details.pickupTime
-                        ? `${details.pickupDate} at ${details.pickupTime}`
+                        ? t(locale, "atTime", { date: details.pickupDate, time: details.pickupTime })
                         : "—"}
                     </div>
                   </div>
                 )}
 
                 <div className="text-sm">
-                  <div className="font-semibold">Phone</div>
+                  {/* ✅ Localized */}
+                  <div className="font-semibold">{t(locale, "phone")}</div>
                   <div className="text-muted-foreground">{details.phone || "—"}</div>
                 </div>
 
                 {details.note ? (
                   <div className="text-sm">
-                    <div className="font-semibold">Note</div>
+                    <div className="font-semibold">{t(locale, "note")}</div>
                     <div className="text-muted-foreground whitespace-pre-wrap">{details.note}</div>
                   </div>
                 ) : null}
               </div>
 
               <div className="mt-4 rounded-2xl border p-4">
-                <div className="text-sm font-semibold mb-2">Items</div>
+                <div className="text-sm font-semibold mb-2">{t(locale, "items")}</div>
                 <div className="space-y-2">
                   {items.map((it) => {
                     const unit = priceToNumber(it.price);
@@ -511,7 +519,7 @@ export function CartSheet({
                 </div>
 
                 <div className="mt-3 pt-3 border-t flex items-center justify-between">
-                  <div className="text-sm font-semibold">Total</div>
+                  <div className="text-sm font-semibold">{t(locale, "total")}</div>
                   <div className="text-sm font-extrabold">{formatEUR(total)}</div>
                 </div>
               </div>
@@ -535,7 +543,8 @@ export function CartSheet({
                     }, 1800);
                   }}
                 >
-                  Clear
+                  {/* ✅ Localized */}
+                  {t(locale, "clear")}
                 </Button>
 
                 <Button
@@ -543,7 +552,8 @@ export function CartSheet({
                   disabled={!canProceed}
                   onClick={() => setStep("checkout")}
                 >
-                  Checkout • {formatEUR(total)}
+                  {/* ✅ Localized with variable */}
+                  {t(locale, "checkoutWithTotal", { total: formatEUR(total) })}
                 </Button>
               </div>
             ) : (
@@ -553,7 +563,7 @@ export function CartSheet({
                   className="flex-1 rounded-2xl"
                   onClick={() => setStep("cart")}
                 >
-                  Back
+                  {t(locale, "back")}
                 </Button>
 
                 <Button
@@ -582,20 +592,20 @@ export function CartSheet({
                       const key = "yachtdrop:orders";
                       const raw = localStorage.getItem(key);
                       const existing = raw ? JSON.parse(raw) : [];
-                      const next = [newOrder, ...(Array.isArray(existing) ? existing : [])]; // newest first
+                      const next = [newOrder, ...(Array.isArray(existing) ? existing : [])];
                       localStorage.setItem(key, JSON.stringify(next));
 
                       localStorage.setItem("yachtdrop:lastOrder", JSON.stringify(newOrder));
                     } catch {
                     }
 
-                    alert("Order request sent! We will contact you soon.");
+                    alert(t(locale, "orderSent"));
                     clearAll();
                     handleOpenChange(false);
                     setStep("cart");
                   }}
                 >
-                  Place request • {formatEUR(total)}
+                  {t(locale, "placeRequestWithTotal", { total: formatEUR(total) })}
                 </Button>
               </div>
             )}
@@ -610,7 +620,7 @@ export function CartSheet({
                 animate-in fade-in slide-in-from-bottom-3
               "
             >
-              Cart cleared
+              {t(locale, "cartCleared")}
             </div>
           </div>
         )}

@@ -8,6 +8,7 @@ import { useCartStore } from "@/lib/cart-store";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
 import { useProductsStore } from "@/lib/products-store";
+import { getSavedLocale, localeFromUrl, t } from "@/lib/i18n";
 
 function parseDiscountPercent(price: string | null, oldPrice: string | null) {
   if (!price || !oldPrice) return null;
@@ -32,6 +33,8 @@ export default function ProductPage() {
   const url = sp.get("url") ?? "";
   const back = sp.get("back");
 
+  const locale = url ? localeFromUrl(url) : getSavedLocale("en");
+
   const add = useCartStore((s) => s.add);
 
   const oldPriceByUrl = useProductsStore((s) => s.oldPriceByUrl);
@@ -52,13 +55,9 @@ export default function ProductPage() {
   if (!url) {
     return (
       <div className="mx-auto max-w-md px-4 py-6">
-        <div className="text-sm text-muted-foreground">Missing product url.</div>
-        <Button
-          className="mt-4 rounded-2xl"
-          variant="secondary"
-          onClick={handleBack}
-        >
-          Go back
+        <div className="text-sm text-muted-foreground">{t(locale, "missingProductUrl")}</div>
+        <Button className="mt-4 rounded-2xl" variant="secondary" onClick={handleBack}>
+          {t(locale, "goBack")}
         </Button>
       </div>
     );
@@ -75,19 +74,20 @@ export default function ProductPage() {
               size="icon"
               onClick={handleBack}
               className="absolute left-0 rounded-full h-10 w-10 bg-muted/40 hover:bg-muted"
-              aria-label="Go back"
+              aria-label={t(locale, "goBack")}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
 
             <div className="mx-auto text-sm font-medium text-foreground/80">
-              Product details
+              {t(locale, "productDetails")}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto max-w-md px-4 py-4">
+      {/* bottom bar safe padding */}
+      <div className="mx-auto max-w-md px-4 py-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
         {isLoading ? (
           <div className="mt-4 space-y-3">
             <div className="h-64 rounded-3xl bg-muted/40 animate-pulse" />
@@ -96,7 +96,7 @@ export default function ProductPage() {
             <div className="h-24 rounded bg-muted/40 animate-pulse" />
           </div>
         ) : error || !data ? (
-          <div className="mt-4 text-sm text-destructive">Failed to load product.</div>
+          <div className="mt-4 text-sm text-destructive">{t(locale, "failedProduct")}</div>
         ) : (
           (() => {
             const effectiveOldPrice = data.oldPrice ?? fallbackOldPrice ?? null;
@@ -115,16 +115,12 @@ export default function ProductPage() {
                 </div>
 
                 <div className="p-4">
-                  <div className="text-xl font-extrabold tracking-tight">
-                    {data.title}
-                  </div>
+                  <div className="text-xl font-extrabold tracking-tight">{data.title}</div>
 
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-lg font-semibold">
-                          {data.price ?? "—"}
-                        </div>
+                        <div className="text-lg font-semibold">{data.price ?? "—"}</div>
 
                         {effectiveOldPrice ? (
                           <div className="text-sm text-muted-foreground line-through">
@@ -140,9 +136,7 @@ export default function ProductPage() {
                       </div>
 
                       {data.stock ? (
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {data.stock}
-                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">{data.stock}</div>
                       ) : null}
                     </div>
 
@@ -157,16 +151,14 @@ export default function ProductPage() {
                         })
                       }
                     >
-                      + Add
+                      {t(locale, "add")}
                     </Button>
                   </div>
 
                   <div className="mt-5">
-                    <div className="text-sm font-semibold tracking-tight">
-                      Description
-                    </div>
+                    <div className="text-sm font-semibold tracking-tight">{t(locale, "description")}</div>
                     <div className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">
-                      {data.description ?? "No description found."}
+                      {data.description ?? t(locale, "noDescription")}
                     </div>
                   </div>
                 </div>
@@ -174,8 +166,6 @@ export default function ProductPage() {
             );
           })()
         )}
-
-        <div className="h-6" />
       </div>
     </div>
   );
