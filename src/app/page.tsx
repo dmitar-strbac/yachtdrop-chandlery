@@ -9,6 +9,8 @@ import { HomeHeader } from "@/components/HomeHeader";
 import { CategoryChips, type Category } from "@/components/CategoryChips";
 import { useCartStore } from "@/lib/cart-store";
 import { Button } from "@/components/ui/button";
+import DockSheet, { loadDockProfile, type DockProfile } from "@/components/DockSheet";
+import DockFab from "@/components/DockFab";
 import { useProductsStore } from "@/lib/products-store";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
@@ -132,6 +134,8 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  const [dockVersion, setDockVersion] = useState(0);
+
   useEffect(() => {
     if (categoryFromUrl && categoryFromUrl !== categoryUrl) {
       setCategoryUrl(categoryFromUrl);
@@ -157,6 +161,13 @@ export default function Home() {
     });
   }, [qc]);
 
+  const [dockOpen, setDockOpen] = useState(false);
+  const [dock, setDock] = useState<DockProfile | null>(null);
+
+  useEffect(() => {
+    setDock(loadDockProfile());
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       <HomeHeader query={query} setQuery={setQuery} />
@@ -165,6 +176,17 @@ export default function Home() {
         categories={CATEGORIES}
         activeUrl={categoryUrl}
         onPick={onPickCategory}
+      />
+
+      <DockFab dock={dock} onOpen={() => setDockOpen(true)} />
+
+      <DockSheet
+        open={dockOpen}
+        onClose={() => setDockOpen(false)}
+        onSaved={(p) => {
+          setDock(p);
+          setDockVersion((v) => v + 1);
+        }}
       />
 
       <main className="mx-auto max-w-md px-4 pb-44 pt-2">
@@ -193,6 +215,7 @@ export default function Home() {
                 product={p}
                 onQuickAdd={() => add(p)}
                 backTo={`/?cat=${encodeURIComponent(categoryUrl)}`}
+                dockVersion={dockVersion}
               />
             ))
           )}

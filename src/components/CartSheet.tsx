@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/cart-store";
+import { useEffect } from "react";
 
 const LOCATIONS = [
   "Porto Montenegro (Tivat)",
@@ -72,13 +73,28 @@ function formatEUR(n: number) {
   }).format(n);
 }
 
-
 function todayISO() {
   const d = new Date();
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
+}
+
+type DockProfile = { marina: string; berth: string; departureISO: string };
+const DOCK_KEY = "yachtdrop:dockProfile";
+
+function loadDock(): DockProfile | null {
+  try {
+    const raw = localStorage.getItem(DOCK_KEY);
+    return raw ? (JSON.parse(raw) as DockProfile) : null;
+  } catch {
+    return null;
+  }
+}
+
+function estimateEtaHours() {
+  return { min: 2, max: 6 };
 }
 
 export function CartSheet({
@@ -145,6 +161,24 @@ export function CartSheet({
   };
 
   const [showCleared, setShowCleared] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const dock = loadDock();
+    if (!dock) return;
+
+    setFulfillment("delivery");
+
+    const match =
+      LOCATIONS.find((x) => x.toLowerCase().includes(dock.marina.toLowerCase())) ??
+      LOCATIONS[0];
+
+    updateDetails({
+      marina: details.marina || match,
+      slip: details.slip || dock.berth,
+    });
+  }, [open]);
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
@@ -394,6 +428,34 @@ export function CartSheet({
                   {fulfillment === "delivery" ? "Delivery to boat / marina" : "Pickup"}
                 </div>
 
+                {(() => {
+                  const dock = loadDock();
+                  if (!dock || fulfillment !== "delivery") return null;
+
+                  const { min, max } = estimateEtaHours();
+                  const etaLatest = new Date(Date.now() + max * 60 * 60 * 1000);
+                  const dep = new Date(dock.departureISO);
+                  const mayBeLate = etaLatest > dep;
+
+                  return (
+                    <div className="mt-2 rounded-2xl border bg-muted/20 p-3">
+                      <div className="text-sm font-semibold">ETA to boat</div>
+                      <div className="text-sm text-muted-foreground">
+                        ~{min}–{max} hours (dock runners in marina)
+                      </div>
+                      {mayBeLate ? (
+                        <div className="mt-1 text-xs font-semibold text-orange-600">
+                          Heads up: delivery might arrive after your departure time.
+                        </div>
+                      ) : (
+                        <div className="mt-1 text-xs font-semibold text-emerald-700">
+                          Looks good before departure.
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {fulfillment === "delivery" ? (
                   <div className="text-sm">
                     <div className="font-semibold">{details.marina || "—"}</div>
@@ -540,7 +602,7 @@ export function CartSheet({
           </div>
         ) : null}
         {showCleared && (
-          <div className="absolute inset-x-0 bottom-6 flex justify-center z-50">
+          <div className="absolute inset-x-0 bottom-6 flex justify-center z-70">
             <div
               className="
                 rounded-3xl border bg-background/95 backdrop-blur shadow-lg
