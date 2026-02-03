@@ -2,9 +2,11 @@
 
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 export type Category = { label: string; url: string };
+
+const SCROLL_KEY = "yachtdrop:categoryChipsScrollLeft";
 
 export function CategoryChips({
   categories,
@@ -20,6 +22,47 @@ export function CategoryChips({
   const scrollBy = (dx: number) => {
     ref.current?.scrollBy({ left: dx, behavior: "smooth" });
   };
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    try {
+      const raw = sessionStorage.getItem(SCROLL_KEY);
+      const saved = raw ? Number(raw) : 0;
+      if (Number.isFinite(saved) && saved > 0) {
+        requestAnimationFrame(() => {
+          el.scrollLeft = saved;
+        });
+      }
+    } catch {
+    }
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    let raf = 0;
+
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        try {
+          sessionStorage.setItem(SCROLL_KEY, String(el.scrollLeft));
+        } catch {
+          // ignore
+        }
+      });
+    };
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
 
   return (
     <div className="mx-auto max-w-md px-4 select-none">

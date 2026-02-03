@@ -129,6 +129,9 @@ export default function Home() {
 
   const setOldPrice = useProductsStore((s) => s.setOldPrice);
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     if (categoryFromUrl && categoryFromUrl !== categoryUrl) {
       setCategoryUrl(categoryFromUrl);
@@ -164,10 +167,10 @@ export default function Home() {
         onPick={onPickCategory}
       />
 
-      <main className="mx-auto max-w-md px-4 pb-28 pt-2">
+      <main className="mx-auto max-w-md px-4 pb-44 pt-2">
         <div className="flex items-center justify-between">
           <div className="text-sm font-medium">
-            {isLoading ? "Loading…" : `${shownProducts.length} items`}
+            {!mounted ? "Loading…" : (isLoading ? "Loading…" : `${shownProducts.length} items`)}
           </div>
 
           {isFetching && !isLoading ? (

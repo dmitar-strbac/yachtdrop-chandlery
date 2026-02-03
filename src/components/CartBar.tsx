@@ -42,7 +42,7 @@ export function CartBar({ onOpen }: { onOpen: () => void }) {
   if (total <= 0) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
+    <div className="fixed bottom-15 left-0 right-0 z-40 pointer-events-none">
       <div className="mx-auto max-w-md px-4 pb-4 pointer-events-auto">
         <div
           className={clsx(

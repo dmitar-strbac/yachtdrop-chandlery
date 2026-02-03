@@ -211,7 +211,7 @@ export function CartSheet({
                         value={details.marina}
                         onChange={(e) => updateDetails({ marina: e.target.value })}
                       >
-                        <option value="">Select location…</option>
+                        <option value="">Select marina location…</option>
                         {LOCATIONS.map((loc) => (
                           <option key={loc} value={loc}>
                             {loc}
@@ -497,8 +497,38 @@ export function CartSheet({
                 <Button
                   className="flex-1 rounded-2xl bg-black text-white font-semibold"
                   onClick={() => {
+                    try {
+                      const id =
+                        typeof crypto !== "undefined" && "randomUUID" in crypto
+                          ? crypto.randomUUID()
+                          : String(Date.now());
+
+                      const newOrder = {
+                        id,
+                        createdAt: new Date().toISOString(),
+                        fulfillment,
+                        totalEUR: total,
+                        status: "requested",
+                        details,
+                        items: items.map((it: any) => ({
+                          title: it.title,
+                          price: it.price ?? null,
+                          qty: it.qty ?? 1,
+                        })),
+                      };
+
+                      const key = "yachtdrop:orders";
+                      const raw = localStorage.getItem(key);
+                      const existing = raw ? JSON.parse(raw) : [];
+                      const next = [newOrder, ...(Array.isArray(existing) ? existing : [])]; // newest first
+                      localStorage.setItem(key, JSON.stringify(next));
+
+                      localStorage.setItem("yachtdrop:lastOrder", JSON.stringify(newOrder));
+                    } catch {
+                    }
+
                     alert("Order request sent! We will contact you soon.");
-                    clearAll();          
+                    clearAll();
                     handleOpenChange(false);
                     setStep("cart");
                   }}
@@ -510,18 +540,18 @@ export function CartSheet({
           </div>
         ) : null}
         {showCleared && (
-  <div className="absolute inset-x-0 bottom-6 flex justify-center z-50">
-    <div
-      className="
-        rounded-3xl border bg-background/95 backdrop-blur shadow-lg
-        px-5 py-3 text-sm font-semibold
-        animate-in fade-in slide-in-from-bottom-3
-      "
-    >
-      Cart cleared
-    </div>
-  </div>
-)}
+          <div className="absolute inset-x-0 bottom-6 flex justify-center z-50">
+            <div
+              className="
+                rounded-3xl border bg-background/95 backdrop-blur shadow-lg
+                px-5 py-3 text-sm font-semibold
+                animate-in fade-in slide-in-from-bottom-3
+              "
+            >
+              Cart cleared
+            </div>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );

@@ -1,9 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
+
+const noopStorage = {
+  getItem: (_key: string) => null,
+  setItem: (_key: string, _value: string) => {},
+  removeItem: (_key: string) => {},
+};
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [client] = React.useState(
@@ -11,8 +17,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 1000 * 60 * 10, 
-            gcTime: 1000 * 60 * 60, 
+            staleTime: 1000 * 60 * 10,
+            gcTime: 1000 * 60 * 60,
             retry: 1,
             refetchOnWindowFocus: false,
             refetchOnReconnect: true,
@@ -21,27 +27,18 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       })
   );
 
-  const persister =
-    typeof window !== "undefined"
-      ? createSyncStoragePersister({
-          storage: window.localStorage,
-        })
-      : null;
-
-  if (!persister) {
-    return (
-      <QueryClientProvider client={client}>
-        {children}
-      </QueryClientProvider>
-    );
-  }
+  const [persister] = React.useState(() =>
+    createSyncStoragePersister({
+      storage: typeof window !== "undefined" ? window.localStorage : noopStorage,
+    })
+  );
 
   return (
     <PersistQueryClientProvider
       client={client}
       persistOptions={{
         persister,
-        maxAge: 1000 * 60 * 60, 
+        maxAge: 1000 * 60 * 60,
       }}
     >
       {children}
