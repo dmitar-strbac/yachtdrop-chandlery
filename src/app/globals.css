@@ -134,4 +134,14 @@
   h1, h2, h3 {
     letter-spacing: -0.03em;
   }
+
+@keyframes dock-fab-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-dock-fab-float {
+  animation: dock-fab-float 3.8s ease-in-out infinite;
+}
+
 }

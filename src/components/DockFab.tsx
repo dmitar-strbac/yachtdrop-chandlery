@@ -49,6 +49,7 @@ export default function DockFab({
             transition
             hover:scale-[1.03]
             active:scale-[0.97]
+            animate-dock-fab-float
           "
           style={{
             animation: "dock-fab-float 3.8s ease-in-out infinite",
@@ -67,18 +68,6 @@ export default function DockFab({
             />
           ) : null}
         </button>
-
-        <style jsx>{`
-          @keyframes dock-fab-float {
-            0%,
-            100% {
-              transform: translateY(0);
-            }
-            50% {
-              transform: translateY(-6px);
-            }
-          }
-        `}</style>
       </div>
     </div>
   );
