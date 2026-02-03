@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import ThemeSwitch from "./ThemeSwitch";
 import { saveLocale, t, type Locale } from "@/lib/i18n";
-import { Globe } from "lucide-react";
+import { Globe, Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 export function HomeHeader({
@@ -63,11 +63,12 @@ export function HomeHeader({
                   type="button"
                   onClick={() => setAndSave("en")}
                   className={[
-                    "w-full text-left px-3 py-2 rounded-xl text-sm font-semibold transition",
+                    "w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold transition",
                     locale === "en" ? "bg-muted" : "hover:bg-muted/60",
                   ].join(" ")}
                 >
-                  English {locale === "en" ? "✓" : ""}
+                  <span>English</span>
+                  {locale === "en" ? <Check className="h-4 w-4 opacity-80" /> : null}
                 </button>
 
                 <button
@@ -75,12 +76,14 @@ export function HomeHeader({
                   type="button"
                   onClick={() => setAndSave("es")}
                   className={[
-                    "w-full text-left px-3 py-2 rounded-xl text-sm font-semibold transition",
+                    "w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold transition",
                     locale === "es" ? "bg-muted" : "hover:bg-muted/60",
                   ].join(" ")}
                 >
-                  Español {locale === "es" ? "✓" : ""}
+                  <span>Español</span>
+                  {locale === "es" ? <Check className="h-4 w-4 opacity-80" /> : null}
                 </button>
+
               </div>
             ) : null}
           </div>
