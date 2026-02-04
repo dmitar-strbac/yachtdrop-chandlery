@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Product } from "@/lib/api";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getSavedLocale, t, type Locale } from "@/lib/i18n";
 
 function stockLabel(stock: string | null, locale: Locale) {
@@ -19,6 +19,9 @@ function stockLabel(stock: string | null, locale: Locale) {
   return stock;
 }
 
+type DetailMini = { title?: string | null; stock?: string | null };
+const DETAILS_CACHE = new Map<string, DetailMini>();
+
 export default function ProductCard({
   product,
   onQuickAdd,
@@ -30,7 +33,51 @@ export default function ProductCard({
   dockVersion: number;
 }) {
   const locale = getSavedLocale("en");
-  const label = stockLabel(product.stock, locale);
+
+  const [resolvedTitle, setResolvedTitle] = useState<string | null>(null);
+  const [resolvedStock, setResolvedStock] = useState<string | null>(null);
+
+  useEffect(() => {
+    const url = product.sourceUrl;
+    if (!url) return;
+
+    const t0 = (product.title ?? "").trim().toLowerCase();
+    const badTitle = !t0 || t0 === "quick view" || t0.includes("quick view") || t0.length < 6;
+
+    if (!badTitle) {
+      setResolvedTitle(null);
+      setResolvedStock(null);
+      return;
+    }
+
+    const cached = DETAILS_CACHE.get(url);
+    if (cached?.title) {
+      setResolvedTitle(String(cached.title));
+      if (cached.stock) setResolvedStock(String(cached.stock));
+      return;
+    }
+
+    let cancelled = false;
+
+    fetch(`/api/product?url=${encodeURIComponent(url)}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        DETAILS_CACHE.set(url, { title: d?.title, stock: d?.stock });
+        if (d?.title) setResolvedTitle(String(d.title));
+        if (d?.stock) setResolvedStock(String(d.stock));
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [product.sourceUrl, product.title]);
+
+  const effectiveTitle = resolvedTitle ?? product.title;
+  const effectiveStock = resolvedStock ?? product.stock;
+
+  const label = stockLabel(effectiveStock, locale);
 
   type DockProfile = { marina: string; berth: string; departureISO: string };
   const DOCK_KEY = "yachtdrop:dockProfile";
@@ -61,7 +108,7 @@ export default function ProductCard({
   }
 
   const dock = useMemo(() => getDock(), [dockVersion]);
-  const signal = useMemo(() => dockSignal(product.stock, dock), [product.stock, dock]);
+  const signal = useMemo(() => dockSignal(effectiveStock, dock), [effectiveStock, dock]);
 
   return (
     <Link href={`/product?url=${encodeURIComponent(product.sourceUrl)}`} className="block">
@@ -70,7 +117,7 @@ export default function ProductCard({
           {product.imageUrl ? (
             <img
               src={`/api/img?url=${encodeURIComponent(product.imageUrl)}`}
-              alt={product.title}
+              alt={effectiveTitle}
               className="h-full w-full object-cover"
             />
           ) : null}
@@ -90,7 +137,9 @@ export default function ProductCard({
         ) : null}
 
         <div className="flex-1 min-w-0">
-          <div className="font-semibold text-[15px] leading-snug line-clamp-2">{product.title}</div>
+          <div className="font-semibold text-[15px] leading-snug line-clamp-2">
+            {effectiveTitle}
+          </div>
 
           <div className="mt-1 flex items-center gap-2">
             <div className="text-sm font-semibold">{product.price ?? "—"}</div>

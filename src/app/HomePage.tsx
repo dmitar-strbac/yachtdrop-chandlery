@@ -37,7 +37,6 @@ function normalizeLocaleInUrl(url: string, locale: Locale) {
 
 const CATEGORY_DEFS: Array<{
   key:
-    | "anchoring"
     | "clothing"
     | "electrics"
     | "electronics"
@@ -55,7 +54,6 @@ const CATEGORY_DEFS: Array<{
     | "tools";
   path: Record<Locale, string>;
 }> = [
-  { key: "anchoring", path: { en: "/100799-anchoring-docking", es: "/100799-anclaje-acoplamiento" } },
   { key: "clothing", path: { en: "/43-personal-equipment", es: "/43-equipamiento-personal" } },
   { key: "electrics", path: { en: "/100392-electricslighting", es: "/100392-electricidad-iluminacion" } },
   { key: "electronics", path: { en: "/190-electronics", es: "/190-electronica" } },

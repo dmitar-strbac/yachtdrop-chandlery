@@ -144,28 +144,28 @@ function parseJsonLdProduct(html: string): Partial<ProductDetail> {
             title: title ?? undefined,
             description: description ?? undefined,
             imageUrl: img ?? undefined,
-            price: price && currency ? normalizeCurrency(`${currency} ${price}`) ?? undefined : undefined,
+            price:
+              price && currency
+                ? normalizeCurrency(`${currency} ${price}`) ?? undefined
+                : undefined,
           };
         }
       }
-    } catch {
-    }
+    } catch {}
   }
 
   return {};
 }
 
 function extractByItempropDescription(html: string): string | null {
-  const m =
-    html.match(/<([a-z0-9]+)\b[^>]*\bitemprop=["']description["'][^>]*>([\s\S]*?)<\/\1>/i);
+  const m = html.match(
+    /<([a-z0-9]+)\b[^>]*\bitemprop=["']description["'][^>]*>([\s\S]*?)<\/\1>/i
+  );
   return m?.[2] ?? null;
 }
 
 function extractElementInnerHtmlById(html: string, id: string): string | null {
-  const startRe = new RegExp(
-    `<([a-z0-9]+)\\b[^>]*\\bid=["']${id}["'][^>]*>`,
-    "i"
-  );
+  const startRe = new RegExp(`<([a-z0-9]+)\\b[^>]*\\bid=["']${id}["'][^>]*>`, "i");
   const m = startRe.exec(html);
   if (!m || m.index == null) return null;
 
@@ -194,33 +194,25 @@ function extractDescription(html: string, ld: Partial<ProductDetail>): string | 
   const collapseDesc = extractElementInnerHtmlById(html, "collapseDescription");
   if (collapseDesc) {
     const cleaned = stripHtml(collapseDesc).trim();
-    if (cleaned && cleaned.length > 20) {
-      return cleaned;
-    }
+    if (cleaned && cleaned.length > 20) return cleaned;
   }
 
   const itempropDesc = extractByItempropDescription(html);
   if (itempropDesc) {
     const cleaned = stripHtml(itempropDesc).trim();
-    if (cleaned && cleaned.length > 20) {
-      return cleaned;
-    }
+    if (cleaned && cleaned.length > 20) return cleaned;
   }
 
   const descById = extractElementInnerHtmlById(html, "description");
   if (descById) {
     const cleaned = stripHtml(descById).trim();
-    if (cleaned && cleaned.length > 20) {
-      return cleaned;
-    }
+    if (cleaned && cleaned.length > 20) return cleaned;
   }
 
   const productDesc = extractElementInnerHtmlById(html, "product-description");
   if (productDesc) {
     const cleaned = stripHtml(productDesc).trim();
-    if (cleaned && cleaned.length > 20) {
-      return cleaned;
-    }
+    if (cleaned && cleaned.length > 20) return cleaned;
   }
 
   if (typeof ld.description === "string" && ld.description.trim()) {
@@ -228,12 +220,16 @@ function extractDescription(html: string, ld: Partial<ProductDetail>): string | 
   }
 
   const metaDesc =
-    firstMatch(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["'][^>]*>/i, html) ||
-    firstMatch(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["'][^>]*>/i, html);
-  
-  if (metaDesc && metaDesc.trim()) {
-    return metaDesc.trim();
-  }
+    firstMatch(
+      /<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["'][^>]*>/i,
+      html
+    ) ||
+    firstMatch(
+      /<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["'][^>]*>/i,
+      html
+    );
+
+  if (metaDesc && metaDesc.trim()) return metaDesc.trim();
 
   return null;
 }
@@ -271,7 +267,6 @@ export async function GET(req: Request) {
   const html = decodeEntities(htmlRaw);
 
   const ld = parseJsonLdProduct(html);
-
   const description = extractDescription(html, ld);
 
   const title =
@@ -282,23 +277,25 @@ export async function GET(req: Request) {
 
   const imageUrl =
     (typeof ld.imageUrl === "string" && ld.imageUrl) ||
-    firstMatch(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["'][^>]*>/i, html) ||
+    firstMatch(
+      /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["'][^>]*>/i,
+      html
+    ) ||
     null;
 
   const { price, oldPrice } = parsePricesFromHtml(html);
-
   const stock = parseStockFromHtml(html);
 
   const payload: ProductDetail = {
     title,
     description,
-    price: normalizeCurrency((typeof ld.price === "string" && ld.price) ? ld.price : price),
-    oldPrice,          
+    price: normalizeCurrency(typeof ld.price === "string" && ld.price ? ld.price : price),
+    oldPrice,
     stock,
     imageUrl,
     sourceUrl: url,
   };
 
-  setCache(cacheKey, payload, 1000 * 60 * 10); 
+  setCache(cacheKey, payload, 1000 * 60 * 10);
   return NextResponse.json({ ...payload, _cache: "MISS" });
 }
