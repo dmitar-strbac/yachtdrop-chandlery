@@ -19,16 +19,47 @@ export type ProductsResponse = {
   hasNext?: boolean; 
 };
 
-export async function fetchProducts(categoryUrl: string, page = 1) {
-  const qs = new URLSearchParams({
-    url: categoryUrl,
-    page: String(page),
+export async function fetchProducts(
+  categoryUrl: string,
+  page = 1
+): Promise<{ products: Product[]; hasNext: boolean }> {
+  const res = await fetch(
+    `/api/products?url=${encodeURIComponent(categoryUrl)}&page=${page}`,
+    { cache: "no-store" }
+  );
+
+  if (!res.ok) {
+    return { products: [], hasNext: false };
+  }
+
+  const data = await res.json();
+  const raw = Array.isArray(data?.products) ? data.products : [];
+
+  const products: Product[] = raw.flatMap((p: any): Product[] => {
+    const sourceUrl = typeof p?.sourceUrl === "string" ? p.sourceUrl : "";
+    if (!sourceUrl) return []; // 👈 nema null, nema filtera
+
+    return [
+      {
+        title:
+          typeof p?.title === "string" && p.title.trim()
+            ? p.title.trim()
+            : "Product",
+        price: typeof p?.price === "string" ? p.price : null,
+        oldPrice: typeof p?.oldPrice === "string" ? p.oldPrice : null,
+        stock: typeof p?.stock === "string" ? p.stock : null,
+        imageUrl: typeof p?.imageUrl === "string" ? p.imageUrl : null,
+        sourceUrl,
+      },
+    ];
   });
 
-  const res = await fetch(`/api/products?${qs.toString()}`, { cache: "force-cache" });
-  if (!res.ok) throw new Error("Failed to load products");
+  const hasNext =
+    typeof data?.hasNext === "boolean"
+      ? data.hasNext
+      : products.length >= 24;
 
-  return (await res.json()) as ProductsResponse;
+  return { products, hasNext };
 }
 
 export async function fetchProductDetails(productUrl: string) {

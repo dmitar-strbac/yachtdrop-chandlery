@@ -168,8 +168,12 @@ export default function Home() {
 
   const shownProducts = useMemo(() => {
     const pagesToShow = loadedPages.slice(0, Math.max(1, visiblePages));
-    const flat = pagesToShow.flatMap((p) => p.products);
-    return filterProducts(flat, query);
+
+    const flat = pagesToShow.flatMap((p) => Array.isArray(p?.products) ? p.products : []);
+
+    const safe = flat.filter((x): x is Product => !!x && typeof x.sourceUrl === "string" && x.sourceUrl.length > 0);
+
+    return filterProducts(safe, query);
   }, [loadedPages, visiblePages, query]);
 
   const searching = query.trim().length > 0;
